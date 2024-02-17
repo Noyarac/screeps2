@@ -7,7 +7,7 @@ module.exports = function() {
         },
         enumerable: false,
         configurable: true
-       });
+    });
 
        Object.defineProperty(p, 'pathToSpawn', {
         get: function() {
@@ -25,10 +25,14 @@ module.exports = function() {
 
        Object.defineProperty(p, 'harvester', {
         get: function() {
-            return Memory.sources[this.id].harvester;
+            if (!this._harvester) {
+                this._harvester = Game.getObjectById(this.memory.harvester);
+            }
+            return this._harvester;
         },
         set: function(value) {
-            Memory.sources[this.id].harvester = value;
+            this._harvester = value;
+            this.memory.harvester = value.id;
         },
         enumerable: false,
         configurable: true
