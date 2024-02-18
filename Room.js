@@ -1,6 +1,30 @@
 module.exports = function() {
     let p = Room.prototype;
 
+    p.update = function() {
+        const log = this.getEventLog();
+        for (const event of log) {
+            if (event.event == EVENT_OBJECT_DESTROYED) {
+                if (event.data.type == "creep") debugger;
+            }
+        }
+    }
+
+    Object.defineProperty(p, 'storage', {
+        get: function() {
+            if (!this._storage) {
+                if (!this.memory.storage) {
+                    const storage = this.find(FIND_MY_STRUCTURES).filter(struct => struct.structureType == STRUCTURE_LINK && struct.role == "receiver")
+                    this.memory.storage = this.find(FIND_MY_storageS)[0].id;
+                }
+                this._storage = Game.getObjectById(this.memory.storage);
+            }
+            return this._storage;
+        },
+        enumerable: false,
+        configurable: true
+    });
+
     Object.defineProperty(p, 'spawn', {
         get: function() {
             if (!this._spawn) {
@@ -13,9 +37,9 @@ module.exports = function() {
         },
         enumerable: false,
         configurable: true
-       });
+    });
 
-       Object.defineProperty(p, 'sources', {
+    Object.defineProperty(p, 'sources', {
         get: function() {
             if (!this._sources) {
                 if (!this.memory.sources) {
@@ -27,9 +51,9 @@ module.exports = function() {
         },
         enumerable: false,
         configurable: true
-       });
+    });
 
-       Object.defineProperty(p, 'targetedWorkerAmount', {
+    Object.defineProperty(p, 'targetedWorkerAmount', {
         get: function() {
             if (!this._targetedWorkerAmount) {
                 if (!this.memory.targetedWorkerAmount) {
@@ -45,9 +69,9 @@ module.exports = function() {
         },
         enumerable: true,
         configurable: true
-       });
+    });
 
-       Object.defineProperty(p, 'currentWorkerAmount', {
+    Object.defineProperty(p, 'currentWorkerAmount', {
         get: function() {
             if (!this._currentWorkerAmount) {
                 if (!this.memory.currentWorkerAmount) {
@@ -63,6 +87,6 @@ module.exports = function() {
         },
         enumerable: false,
         configurable: true
-       });
+    });
 
 }

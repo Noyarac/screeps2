@@ -7,7 +7,7 @@ module.exports = function() {
         },
         enumerable: false,
         configurable: true
-       });
+    });
 
        Object.defineProperty(p, 'pathToSpawn', {
         get: function() {
@@ -31,8 +31,8 @@ module.exports = function() {
             return this._harvester;
         },
         set: function(value) {
-            this.memory.harvester = value.id;
             this._harvester = value;
+            this.memory.harvester = value.id;
         },
         enumerable: false,
         configurable: true

@@ -1,4 +1,5 @@
 module.exports = function() {
-    Memory.initialize = true;
-    Memory.sources = Memory.sources || new Object;
+    for (const cat of ["sources", "links", "game"]) {
+        Memory[cat] = Memory[cat] || new Object;
+    }
 }

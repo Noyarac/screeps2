@@ -3,8 +3,10 @@ module.exports = function() {
     p.initialize = function() {
         const room = this.room;
         if (room.currentWorkerAmount < room.targetedWorkerAmount) {
-            if (this.spawnCreep([CARRY, WORK, MOVE], this.room.name + Game.time.toString(), {role: "worker"}) == OK) {
+            const creepName = this.room.name + Game.time.toString();
+            if (this.spawnCreep([CARRY, WORK, MOVE], creepName, {role: "worker"}) == OK) {
                 this.room.currentWorkerAmount += 1;
+                Game.creepsToIdentify.push(creepName);
             }
         }
     }
