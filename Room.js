@@ -1,92 +1,119 @@
+
+const Blueprint = require("./Blueprint");
+
 module.exports = function() {
     let p = Room.prototype;
 
-    p.update = function() {
-        const log = this.getEventLog();
-        for (const event of log) {
-            if (event.event == EVENT_OBJECT_DESTROYED) {
-                if (event.data.type == "creep") debugger;
+    p.scanEventLog = function() {
+        for (const event of this.getEventLog()) {
+            switch(event.event) {
+                case EVENT_BUILD:
+                    if (event.data.incomplete == false) {
+                        const newStruct = new RoomPosition(event.data.x, event.data.y, this.name).lookFor(LOOK_STRUCTURES)[0];
+                        let shouldBreak = false;
+                        for (const location of ["remote", "local"]) {
+                            for (let i = 0; i < Math.min(7, this.controller.level + 1); i++) {
+                                for (let j = 0; j < this.blueprint[location + "BuildingsPerLevel"][i].length; j++) {
+                                    // for (let [building, position, structType] of this.blueprint[location + "BuildingsPerLevel"][i]) {
+                                    const position = this.blueprint[location + "BuildingsPerLevel"][i][j][1];
+                                    const structType = this.blueprint[location + "BuildingsPerLevel"][i][j][2];
+                                    const ref = this.blueprint[location + "BuildingsPerLevel"][i][j][3]
+                                    if (newStruct.pos.isEqualTo(position) && newStruct.structureType == structType) {
+                                        this.blueprint[ref] = newStruct;
+                                        if (this.blueprint.link1 && this.blueprint.link2 && this.controller.level >= 6 && this.blueprint.container0) {
+                                            this.blueprint.container0.destroy();
+                                        }
+                                        shouldBreak = true;
+                                        break;
+                                    }
+                                }
+                                if (shouldBreak) {
+                                    break;
+                                }
+                            }
+                            if (shouldBreak) {
+                                break;
+                            }
+                        }            
+                    }
+                    break;
+                case EVENT_OBJECT_DESTROYED:
+                    if (event.data.type == "creep") {
+                        Memory.creeps[Memory.creepsNames[event.objectId]] = undefined;
+                        Memory.creepsNames[event.objectId] = undefined;
+                    }
+                    break;
             }
         }
     }
 
-    Object.defineProperty(p, 'storage', {
-        get: function() {
-            if (!this._storage) {
-                if (!this.memory.storage) {
-                    const storage = this.find(FIND_MY_STRUCTURES).filter(struct => struct.structureType == STRUCTURE_LINK && struct.role == "receiver")
-                    this.memory.storage = this.find(FIND_MY_storageS)[0].id;
+    p.update = function() {
+        this.scanEventLog();
+        for (const link of [this.blueprint.link1, this.blueprint.link2]) {
+            if (link) link.reactToTick();
+        }
+        if (this.spawn) this.spawn.reactToTick();
+        this.blueprint.reactToTick();
+    }
+
+    p.scanExistingBuildings = function() {
+        for (const location of ["remote", "local"]) {
+            for (let i = 0; i < Math.min(this.controller.level, 7); i++) {
+                for (let j = 0; j < this.blueprint[location + "BuildingsPerLevel"][i].length; j++) {
+                    const position = this.blueprint[location + "BuildingsPerLevel"][i][j][1];
+                    const structType = this.blueprint[location + "BuildingsPerLevel"][i][j][2];
+                    const ref = this.blueprint[location + "BuildingsPerLevel"][i][j][3]
+
+                    const testedBuildings = position.lookFor(LOOK_STRUCTURES).filter(struct => struct.structureType == structType);
+                    if (testedBuildings.length) {
+                        this.blueprint[ref] = testedBuildings[0];
+                    }
                 }
-                this._storage = Game.getObjectById(this.memory.storage);
             }
-            return this._storage;
+        }            
+    }
+
+    Object.defineProperty(p, "sources", {
+        get: function() {
+            if (!this.memory.sources) {
+                this.memory.sources = this.find(FIND_SOURCES).map(source => source.id);
+                if (this.name == "sim") {
+                    this.memory.sources.splice(2,2);
+                }
+            }
+            return this.memory.sources.map(sourceId => Game.getObjectById(sourceId));
         },
-        enumerable: false,
         configurable: true
     });
 
-    Object.defineProperty(p, 'spawn', {
+    Object.defineProperty(p, "spawn", {
         get: function() {
             if (!this._spawn) {
                 if (!this.memory.spawn) {
-                    this.memory.spawn = this.find(FIND_MY_SPAWNS)[0].id;
+                    const testedSpawns = this.find(FIND_MY_SPAWNS);
+                    if (testedSpawns.length) {
+                        this.memory.spawn = testedSpawns[0].id;
+                    }
                 }
                 this._spawn = Game.getObjectById(this.memory.spawn);
             }
             return this._spawn;
         },
-        enumerable: false,
         configurable: true
     });
-
-    Object.defineProperty(p, 'sources', {
+    Object.defineProperty(p, "orientation", {
         get: function() {
-            if (!this._sources) {
-                if (!this.memory.sources) {
-                    this.memory.sources = this.find(FIND_SOURCES).map(source => source.id);
-                }
-                this._sources = this.memory.sources.map(sourceId => Game.getObjectById(sourceId));
+            if (!this.memory.orientation && this.spawn) {
+                this.memory.orientation = this.spawn.pos.getDirectionTo(this.controller);
             }
-            return this._sources;
+            return this.memory.orientation;
         },
-        enumerable: false,
         configurable: true
     });
-
-    Object.defineProperty(p, 'targetedWorkerAmount', {
+    Object.defineProperty(p, "blueprint", {
         get: function() {
-            if (!this._targetedWorkerAmount) {
-                if (!this.memory.targetedWorkerAmount) {
-                    this.memory.targetedWorkerAmount = 1;
-                }
-                this._targetedWorkerAmount = this.memory.targetedWorkerAmount;
-            }
-            return this._targetedWorkerAmount;
+            return new Blueprint(this);
         },
-        set: function(value) {
-            this.memory.targetedWorkerAmount = value;
-            this._targetedWorkerAmount = value;
-        },
-        enumerable: true,
         configurable: true
     });
-
-    Object.defineProperty(p, 'currentWorkerAmount', {
-        get: function() {
-            if (!this._currentWorkerAmount) {
-                if (!this.memory.currentWorkerAmount) {
-                    this.memory.currentWorkerAmount = this.find(FIND_MY_CREEPS, {filter:{role: "worker"}}).length;
-                }
-                this._currentWorkerAmount = this.memory.currentWorkerAmount;
-            }
-            return this._currentWorkerAmount;
-        },
-        set: function(value) {
-            this.memory.currentWorkerAmount = value;
-            this._currentWorkerAmount = value;
-        },
-        enumerable: false,
-        configurable: true
-    });
-
 }
