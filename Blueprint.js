@@ -22,9 +22,11 @@ class Blueprint {
         }
     }
     reactToTick() {
+        if (this.container0 && this.room.controller.level >= 6 && this.link1 && this.link2) {
+            this.container0.destroy();
+        }
         if (!this.currentConstructionSite && this.room.spawn) {
-            let shouldBreak = false;
-            for (const location of ["remote", "local"]) {
+            loop1: for (const location of ["remote", "local"]) {
                 for (let i = 0; i < Math.min(7, this.room.controller.level + 1); i++) {
                     for (const [building, position, structType] of this[location + "BuildingsPerLevel"][i]) {
                         if (!building && position && structType && !(structType == STRUCTURE_CONTAINER && this.link1 && this.link2)) {
@@ -33,16 +35,9 @@ class Blueprint {
                             if (newConstructionSite.length) {
                                 this.currentConstructionSite = newConstructionSite[0];
                             }
-                            shouldBreak = true;
-                            break;
+                            break loop1;
                         }
                     }
-                    if (shouldBreak) {
-                        break;
-                    }
-                }
-                if (shouldBreak) {
-                    break;
                 }
             }
         }
@@ -89,9 +84,19 @@ for (const ref of [1, 2]) {
                 loop1: for (const dx of AROUND) {
                     for (const dy of AROUND) {
                         const testedPosition = new RoomPosition(harvesterPosition[0] + dx, harvesterPosition[1] + dy, this.room.name);
-                        if (testedPosition.look().length == 1 && !this.room.sources[sourceIndex].pathToSpawn.some(step => testedPosition.x == step.x && testedPosition.y == step.y)) {
+                        const testedLinks = testedPosition.lookFor(LOOK_STRUCTURES).filter(struct => struct.structureType == STRUCTURE_LINK);
+                        if (testedLinks.length == 1 && !this.room.sources[sourceIndex].pathToSpawn.some(step => testedPosition.x == step.x && testedPosition.y == step.y)) {
                             this.memory[name] = [testedPosition.x, testedPosition.y];
                             break loop1;
+                        }
+                    }
+                }
+                loop2: for (const dx of AROUND) {
+                    for (const dy of AROUND) {
+                        const testedPosition = new RoomPosition(harvesterPosition[0] + dx, harvesterPosition[1] + dy, this.room.name);
+                        if (testedPosition.look().length == 1 && !this.room.sources[sourceIndex].pathToSpawn.some(step => testedPosition.x == step.x && testedPosition.y == step.y)) {
+                            this.memory[name] = [testedPosition.x, testedPosition.y];
+                            break loop2;
                         }
                     }
                 }

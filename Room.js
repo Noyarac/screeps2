@@ -8,34 +8,24 @@ module.exports = function() {
         for (const event of this.getEventLog()) {
             switch(event.event) {
                 case EVENT_BUILD:
-                    if (event.data.incomplete == false) {
-                        const newStruct = new RoomPosition(event.data.x, event.data.y, this.name).lookFor(LOOK_STRUCTURES)[0];
-                        let shouldBreak = false;
-                        for (const location of ["remote", "local"]) {
-                            for (let i = 0; i < Math.min(7, this.controller.level + 1); i++) {
-                                for (let j = 0; j < this.blueprint[location + "BuildingsPerLevel"][i].length; j++) {
-                                    // for (let [building, position, structType] of this.blueprint[location + "BuildingsPerLevel"][i]) {
-                                    const position = this.blueprint[location + "BuildingsPerLevel"][i][j][1];
-                                    const structType = this.blueprint[location + "BuildingsPerLevel"][i][j][2];
-                                    const ref = this.blueprint[location + "BuildingsPerLevel"][i][j][3]
-                                    if (newStruct.pos.isEqualTo(position) && newStruct.structureType == structType) {
-                                        this.blueprint[ref] = newStruct;
-                                        if (this.blueprint.link1 && this.blueprint.link2 && this.controller.level >= 6 && this.blueprint.container0) {
-                                            this.blueprint.container0.destroy();
-                                        }
-                                        shouldBreak = true;
-                                        break;
-                                    }
-                                }
-                                if (shouldBreak) {
-                                    break;
-                                }
-                            }
-                            if (shouldBreak) {
-                                break;
-                            }
-                        }            
+                    if (event.data.incomplete) {
+                        break;
                     }
+                    const newStruct = new RoomPosition(event.data.x, event.data.y, this.name).lookFor(LOOK_STRUCTURES)[0];
+                    loop1: for (const location of ["remote", "local"]) {
+                        for (let i = 0; i < Math.min(7, this.controller.level + 1); i++) {
+                            for (let j = 0; j < this.blueprint[location + "BuildingsPerLevel"][i].length; j++) {
+                                // for (let [building, position, structType] of this.blueprint[location + "BuildingsPerLevel"][i]) {
+                                const position = this.blueprint[location + "BuildingsPerLevel"][i][j][1];
+                                const structType = this.blueprint[location + "BuildingsPerLevel"][i][j][2];
+                                const ref = this.blueprint[location + "BuildingsPerLevel"][i][j][3]
+                                if (newStruct.pos.isEqualTo(position) && newStruct.structureType == structType) {
+                                    this.blueprint[ref] = newStruct;
+                                    break loop1;
+                                }
+                            }
+                        }
+                    }            
                     break;
                 case EVENT_OBJECT_DESTROYED:
                     if (event.data.type == "creep") {
@@ -47,18 +37,17 @@ module.exports = function() {
         }
     }
 
-    p.update = function() {
+    p.reactToTick = function() {
         this.scanEventLog();
-        for (const link of [this.blueprint.link1, this.blueprint.link2]) {
-            if (link) link.reactToTick();
+        for (const struct of [this.blueprint.tower, this.blueprint.link1, this.blueprint.link2, this.spawn, this.blueprint]) {
+            if (struct) struct.reactToTick();
         }
-        if (this.spawn) this.spawn.reactToTick();
-        this.blueprint.reactToTick();
     }
 
     p.scanExistingBuildings = function() {
+        debugger;
         for (const location of ["remote", "local"]) {
-            for (let i = 0; i < Math.min(this.controller.level, 7); i++) {
+            for (let i = 0; i < 7; i++) {
                 for (let j = 0; j < this.blueprint[location + "BuildingsPerLevel"][i].length; j++) {
                     const position = this.blueprint[location + "BuildingsPerLevel"][i][j][1];
                     const structType = this.blueprint[location + "BuildingsPerLevel"][i][j][2];

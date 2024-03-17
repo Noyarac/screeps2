@@ -9,6 +9,17 @@ module.exports = function() {
         configurable: true
     });
     
+    Object.defineProperty(p, 'sourceIndex', {
+        get: function() {
+            if (!this.memory.sourceIndex) {
+                this.memory.sourceIndex = this.room.sources.indexOf(this);
+            }
+            return this.memory.sourceIndex;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    
     Object.defineProperty(p, 'pathToSource', {
         get: function() {
             if (!this._pathToSource && this.room.spawn) {
@@ -45,7 +56,10 @@ module.exports = function() {
                                 break;
                         }
                     }
-                    reversed.splice(0,1);
+                    // reversed.splice(0,1);
+                    reversed[0].direction = (((reversed[0].direction - 1) + 4) % 8) + 1;
+                    reversed[0].dx *= -1;
+                    reversed[0].dy *= -1;
                     this.memory.pathToSource = Room.serializePath(reversed);
                 }
                 this._pathToSource = Room.deserializePath(this.memory.pathToSource);
@@ -60,14 +74,13 @@ module.exports = function() {
         get: function() {
             if (!this._pathToSpawn && this.room.spawn) {
                 if (!this.memory.pathToSpawn) {
-                    const sourceIndex = this.room.sources.indexOf(this);
                     const blueprint = this.room.blueprint;
-                    const dest = blueprint.getPos((sourceIndex) ? 25 : 23);
+                    const dest = blueprint.getPos((this.sourceIndex) ? 25 : 23);
                     const thisRoomName = this.room.name;
                     const source0 = this.room.sources[0];
                     let costCallbackFunction = (roomName, costMatrix) => {
                         if (roomName == thisRoomName) {
-                            if (sourceIndex) {
+                            if (this.sourceIndex) {
                                 for (const step of source0.pathToSpawn) {
                                     costMatrix.set(step.x, step.y, 6);
                                 }
@@ -143,22 +156,67 @@ module.exports = function() {
         configurable: true
     });
 
-    Object.defineProperty(p, 'energyDrop', {
+    Object.defineProperty(p, 'sourceEnergyDrop', {
         get: function() {
-            if (!this._energyDrop) {
-                if (!Game.getObjectById(this.memory.energyDrop)) {
+            if (!this._sourceEnergyDrop) {
+                if (!Game.getObjectById(this.memory.sourceEnergyDrop)) {
                     const testedDrops = this.pos.findInRange(FIND_DROPPED_RESOURCES, 1).filter(struct => struct.resourceType == RESOURCE_ENERGY);
                     if (testedDrops.length) {
-                        this.memory.energyDrop = testedDrops[0].id;
+                        this.memory.sourceEnergyDrop = testedDrops[0].id;
                     }
                 }
-                this._energyDrop = Game.getObjectById(this.memory.energyDrop);
+                this._sourceEnergyDrop = Game.getObjectById(this.memory.sourceEnergyDrop);
             }
-            return this._energyDrop;
+            return this._sourceEnergyDrop;
         },
         set: function(value) {
-            this._energyDrop = value;
-            this.memory.energyDrop = value.id;
+            this._sourceEnergyDrop = value;
+            this.memory.sourceEnergyDrop = value.id;
+        },
+        enumerable: false,
+        configurable: true
+    });
+
+    Object.defineProperty(p, 'recycleEnergyDrop', {
+        get: function() {
+            if (!this._recycleEnergyDrop) {
+                if (!Game.getObjectById(this.memory.recycleEnergyDrop)) {
+                    let testedDrops = this.room.blueprint.getPos(31).lookFor(LOOK_RESOURCES);
+                    if (testedDrops.length) {
+                        this.memory.recycleEnergyDrop = testedDrops[0].id;
+                    }
+                }
+                this._recycleEnergyDrop = Game.getObjectById(this.memory.recycleEnergyDrop);
+            }
+            return this._recycleEnergyDrop;
+        },
+        set: function(value) {
+            this._recycleEnergyDrop = value;
+            this.memory.recycleEnergyDrop = value.id;
+        },
+        enumerable: false,
+        configurable: true
+    });
+
+    Object.defineProperty(p, 'spawnEnergyDrop', {
+        get: function() {
+            if (!this._spawnEnergyDrop) {
+                if (!Game.getObjectById(this.memory.spawnEnergyDrop)) {
+                    for (const position of [24, 23 + this.sourceIndex * 2]) {
+                        let testedDrops = this.room.blueprint.getPos(position).lookFor(LOOK_RESOURCES);
+                        if (testedDrops.length) {
+                            this.memory.spawnEnergyDrop = testedDrops[0].id;
+                            break;
+                        }
+                    }
+                }
+                this._spawnEnergyDrop = Game.getObjectById(this.memory.spawnEnergyDrop);
+            }
+            return this._spawnEnergyDrop;
+        },
+        set: function(value) {
+            this._spawnEnergyDrop = value;
+            this.memory.spawnEnergyDrop = value.id;
         },
         enumerable: false,
         configurable: true
@@ -166,20 +224,10 @@ module.exports = function() {
 
     Object.defineProperty(p, 'link', {
         get: function() {
-            if (!this._link) {
-                if (!this.memory.link) {
-                    const testedLinks = this.pos.findInRange(FIND_MY_STRUCTURES, 2).filter(struct => struct.structureType == STRUCTURE_LINK);
-                    if (testedLinks.length) {
-                        this.memory.link = testedLinks[0].id;
-                    }
-                }
-                this._link = Game.getObjectById(this.memory.link);
-            }
-            return this._link;
+            return this.room.blueprint["link" + (this.sourceIndex + 1).toString()];
         },
         set: function(value) {
-            this._link = value;
-            this.memory.link = value.id;
+            this.room.blueprint["link" + (this.sourceIndex + 1).toString()] = value;
         },
         enumerable: false,
         configurable: true
