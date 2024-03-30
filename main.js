@@ -36,5 +36,6 @@ module.exports.loop = function () {
     for (const creep of Object.values(Game.creeps)) {
         creep.doAction();
     }
-    Game.cpu.generatePixel();
+
+    if (typeof SEASON === undefined) Game.cpu.generatePixel();
 }

@@ -11,6 +11,36 @@ module.exports = function() {
         configurable: true
     });
 
+    Object.defineProperty(p, "myBuildings", {
+        get: function() {
+            if (this.type == "transferer") {
+                return [this.room.blueprint["ext" + (3 + this.sourceIndex).toString()], this.room.blueprint["ext" + (7 + this.sourceIndex).toString()], this.room.blueprint["ext" + (11 + this.sourceIndex).toString()], this.room.spawn]
+            } else if (this.type == "upgrader") {
+                return [this.room.blueprint["ext" + (1 + this.sourceIndex).toString()], this.room.blueprint["ext" + (5 + this.sourceIndex).toString()], this.room.blueprint["ext" + (9 + this.sourceIndex).toString()], (this.sourceIndex == 0) ? this.room.blueprint.tower : this.room.blueprint.ext13]
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+
+    Object.defineProperty(p, "myBuildingsAreFull", {
+        get: function() {
+            if (this._myBuildingsAreFull == undefined) {
+                let isFull = true;
+                for (const building of this.myBuildings) {
+                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY)) {
+                        isFull = false;
+                        break;
+                    }
+                }
+                this._myBuildingsAreFull = isFull;
+            }
+            return this._myBuildingsAreFull;
+        },
+        enumerable: true,
+        configurable: true
+    });
+
     Object.defineProperty(p, "mySource", {
         get: function() {
             return this.room.sources[this.sourceIndex];
@@ -35,27 +65,52 @@ module.exports = function() {
     
     p.doAction = function() {
         try{
+            let CP;
         switch(this.type) {
             case "transferer":
-                if (this.store.getFreeCapacity() != 0) {
-                    if (this.mySource.recycleEnergyDrop) {
-                        return this.pickup(this.mySource.recycleEnergyDrop);
-                    } 
-                    if (this.mySource.spawnEnergyDrop) {
-                        return this.pickup(this.mySource.spawnEnergyDrop);
-                    } 
+                if (this.mySource.recycleEnergyDrop && this.store.getFreeCapacity(RESOURCE_ENERGY) != 0) {
+                    return this.pickup(this.mySource.recycleEnergyDrop);
+                } 
+                if (this.room.controller.level > 5 && this.room.blueprint.storage && this.room.blueprint.link0 && this.room.isFullEnergy) {
+                    if (this.room.blueprint.link0.store.getUsedCapacity(RESOURCE_ENERGY) > 700) {
+                        if (this.store.getUsedCapacity(RESOURCE_ENERGY)) {
+                            return this.transfer(this.room.blueprint.storage, RESOURCE_ENERGY);
+                        }
+                        return this.withdraw(this.room.blueprint.link0, RESOURCE_ENERGY);
+                    } else if (this.room.blueprint.link0.store.getUsedCapacity(RESOURCE_ENERGY) < 100) {
+                        if (this.store.getUsedCapacity(RESOURCE_ENERGY)) {
+                            return this.transfer(this.room.blueprint.link0, RESOURCE_ENERGY);
+                        }
+                        return this.withdraw(this.room.blueprint.storage, RESOURCE_ENERGY);
+                    }
+                }
+                if (this._myBuildingsAreFull) {
+                    if (this.room.blueprint.storage) {
+                        return this.transfer(this.room.blueprint.storage, RESOURCE_ENERGY);
+                    }
+                    return;
+                }
+                if (this.store.getFreeCapacity(RESOURCE_ENERGY) != 0) {
+                    if (this.room.blueprint.storage && this.room.blueprint.storage.store.getUsedCapacity(RESOURCE_ENERGY)) {
+                        return this.withdraw(this.room.blueprint.storage, RESOURCE_ENERGY);
+                    }
                     if (this.room.blueprint.link0) {
                         return this.withdraw(this.room.blueprint.link0, RESOURCE_ENERGY);
                     }
                     if (this.room.blueprint.container0) {
                         return this.withdraw(this.room.blueprint.container0, RESOURCE_ENERGY);
                     }
-                } else {
-                    for (const building of [this.room.spawn, this.room.blueprint["ext" + (3 + this.sourceIndex).toString()], this.room.blueprint["ext" + (7 + this.sourceIndex).toString()], this.room.blueprint["ext" + (11 + this.sourceIndex).toString()]]) {
-                        if (building && building.store.getFreeCapacity(RESOURCE_ENERGY)) {
-                            return this.transfer(building, RESOURCE_ENERGY);
-                        }
+                    if (this.mySource.spawnEnergyDrop) {
+                        return this.pickup(this.mySource.spawnEnergyDrop);
                     }
+                }
+                for (const building of this.myBuildings) {
+                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+                        return this.transfer(building, RESOURCE_ENERGY);
+                    }
+                }
+                if (this.room.blueprint.storage && this.store.getUsedCapacity(RESOURCE_ENERGY)) {
+                return this.transfer(this.room.blueprint.storage, RESOURCE_ENERGY);
                 }
                 break;
             case "harvester":
@@ -72,7 +127,7 @@ module.exports = function() {
                     }
                 }
                 this.harvest(this.mySource);
-                if (this.mySource.link) {
+                if (this.mySource.link && this.store.getUsedCapacity(RESOURCE_ENERGY) > 40) {
                     return this.transfer(this.mySource.link, RESOURCE_ENERGY);
                 }
                 break;
@@ -100,31 +155,39 @@ module.exports = function() {
                         this.withdraw(this.room.blueprint.container0, RESOURCE_ENERGY);
                     }
                 } 
-                for (const building of [this.room.blueprint["ext" + (this.sourceIndex + 1).toString()], this.room.blueprint["ext" + (5 + this.sourceIndex).toString()], this.room.blueprint["ext" + (9 + this.sourceIndex).toString()], (this.sourceIndex == 0) ? this.room.blueprint.tower : this.room.blueprint.ext13]) {
-                    if(building && building.store.getUsedCapacity(RESOURCE_ENERGY) > building.store.getCapacity(RESOURCE_ENERGY)) {
-                        this.drop(RESOURCE_ENERGY, this.store.getUsedCapacity(RESOURCE_ENERGY));
-                        this.withdraw(building, RESOURCE_ENERGY);
-                    }
-                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY)) {
+                for (const building of this.myBuildings) {
+                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
                         return this.transfer(building, RESOURCE_ENERGY);
                     }
                 }
-                if (this.room.energyAvailable == this.room.energyCapacityAvailable) {
+                if (this.room.isFullEnergy) {
                     this.build(this.room.blueprint.currentConstructionSite);
                     return this.upgradeController(this.room.controller);
                 }
                 break;
             case "builder":
-                if (this.room.name != this.memory.roomTarget) {
-                    return this.moveTo(new RoomPosition(25, 25, this.memory.roomTarget), {reusePath:50});
+                CP = "E48S20";
+                if (this.room.name != CP && !this.memory.wentToCP) {
+                    return this.moveTo(new RoomPosition(3, 44, CP), {reusePath:50});
+                }
+                if (this.room.name == CP && !this.memory.wentToCP) {
+                    this.memory.wentToCP = true;
+                    return
+                }
+                if (this.room.name != this.memory.targetRoomName) {
+                    return this.moveTo(new RoomPosition(25, 25, this.memory.targetRoomName), {reusePath:50});
                 }
                 if (!this.store.getUsedCapacity(RESOURCE_ENERGY)) {
                     this.memory.needsEnergy = true;
                 } else
                 if (!this.store.getFreeCapacity(RESOURCE_ENERGY)) {
-                    this.memory.needsEnergy = undefined;
+                   this.memory.needsEnergy = undefined;
                 }
+                
                 if (this.memory.needsEnergy) {
+                    // if (this.withdraw(Game.getObjectById("65ff6ce6fde9b51d86868f3d"), RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    //     this.moveTo(Game.getObjectById("65ff6ce6fde9b51d86868f3d"), {reusePath: 7});
+                    // }
                     if (this.harvest(this.room.sources[this.sourceIndex]) == ERR_NOT_IN_RANGE) {
                         this.moveTo(this.room.sources[this.sourceIndex], {reusePath: 7});
                     }
@@ -134,21 +197,55 @@ module.exports = function() {
                     }
                 }
                 break;
-            case "conqueror":
-                if (this.room.name != this.memory.roomTarget) {
-                    return this.moveTo(new RoomPosition(25, 25, this.memory.roomTarget), {reusePath: 50});
+                case "claimer":
+                CP = "E48S20";
+                if (this.room.name != CP && !this.memory.wentToCP) {
+                    return this.moveTo(new RoomPosition(3, 44, CP), {reusePath:50});
                 }
-                if (this.room.controller.my) {
-                    return this.suicide();
+                if (this.room.name == CP && !this.memory.wentToCP) {
+                    this.memory.wentToCP = true;
+                    return
                 }
-                if (this.claimController(this.room.controller) == ERR_NOT_IN_RANGE) {
-                    this.moveTo(this.room.controller, {reusePath: 7});
-                }
-                break;
-
+                    if (this.room.name != this.memory.targetRoomName) {
+                        return this.moveTo(new RoomPosition(25, 25, this.memory.targetRoomName), {reusePath: 50});
+                    }
+                    if (this.room.controller.my) {
+                        return this.suicide();
+                    }
+                    if (this.claimController(this.room.controller) == ERR_NOT_IN_RANGE) {
+                        this.moveTo(this.room.controller, {reusePath: 7});
+                    }
+                    break;
+                case "carrier":
+                    let myResource;
+                    if (this.store.getUsedCapacity()) {
+                        const arrivalTerminal = Game.getObjectById("65fec893f30a2f3c6c76f75c");
+                        for (const resource of ["GO", "ZH", "UH", "KO", "energy"]) {
+                            if (this.store.getUsedCapacity(resource)) {
+                                myResource = resource;
+                                break;
+                            }
+                        }
+                        if (this.transfer(arrivalTerminal, myResource) == ERR_NOT_IN_RANGE) {
+                            return this.moveTo(arrivalTerminal, {reusePath: 25});
+                        }
+                    } else {
+                        const departureStorage = Game.getObjectById("65c863a0a89443defc43e79a");
+                        for (const resource of ["GO", "ZH", "UH", "KO", "energy"]) {
+                            if (departureStorage.store.getUsedCapacity(resource)) {
+                                myResource = resource;
+                                break;
+                            }
+                        }
+                        if (this.withdraw(departureStorage, myResource) == ERR_NOT_IN_RANGE) {
+                            return this.moveTo(departureStorage, {reusePath: 25});
+                        }
+                    }
+                    break;
+            
             case "mover":
             if (this.fatigue == 0) {
-                if (this.mySource.needsHarvesterMoving && !this.store.getUsedCapacity(RESOURCE_ENERGY)) {
+                if (this.mySource.needsHarvesterMoving && this.mySource.harvester && !this.mySource.harvester.spawning) {
                     const harvester = this.mySource.harvester;
                     if (this.pos.isNearTo(harvester)) {
                         if (this.pos.isNearTo(this.mySource)) {
@@ -158,7 +255,7 @@ module.exports = function() {
                             return harvester.move(this);
                         } else {
                             if (this.moveByPath(this.mySource.pathToSource) == ERR_NOT_FOUND) {
-                                this.moveTo(this.room.blueprint.getPos(23 + 2 * this.sourceIndex), {reusePath: 7});
+                                this.moveTo(this.room.blueprint.getPos(22 + 4 * this.sourceIndex), {reusePath: 7});
                             }
                             this.pull(harvester);
                             return harvester.move(this);
@@ -166,34 +263,38 @@ module.exports = function() {
                     } else {
                         this.moveTo(harvester, {reusePath: 7});
                     }
-                } else if (this.mySource.needsUpgraderMoving && !this.store.getUsedCapacity(RESOURCE_ENERGY)) {
+                } else if (this.mySource.needsUpgraderMoving && !this.mySource.needsHarvesterMoving && this.mySource.upgrader && !this.mySource.upgrader.spawning) {
                     const upgrader = this.mySource.upgrader;
                     if (this.pos.isNearTo(upgrader) && !upgrader.pos.isEqualTo(this.room.blueprint.getPos(16 + 2 * this.sourceIndex))) {
-                        if (this.pos.isEqualTo(this.room.blueprint.getPos(23 + 2 * this.sourceIndex))) {
+                        if (this.pos.isEqualTo(this.room.blueprint.getPos(22 + 4 * this.sourceIndex))) {
                             this.moveTo(this.room.blueprint.getPos(16 + 2 * this.sourceIndex));
                             this.pull(upgrader);
                             return upgrader.move(this);
                         } else {
-                            this.moveTo(this.room.blueprint.getPos(23 + 2 * this.sourceIndex), {reusePath: 7});
+                            this.moveTo(this.room.blueprint.getPos(22 + 4 * this.sourceIndex), {reusePath: 7});
                             this.pull(upgrader);
                             return upgrader.move(this);
                         }
                     } else {
-                        if (this.moveByPath(this.mySource.pathToSpawn) == ERR_NOT_FOUND) {
-                            this.moveTo(new RoomPosition(this.mySource.pathToSpawn[5].x, this.mySource.pathToSpawn[5].y, this.room.name), {reusePath: 7});
-                        }
+                        this.moveTo(upgrader, {reusePath: 7});
                     }
                 } else {
-                    if (this.room.blueprint.link0) {
-                        if (this.pos.isEqualTo(this.room.blueprint.getPos(31))) {
+                    if (this.getActiveBodyparts(CARRY) == 0) {
+                        if (this.pos.isEqualTo(this.room.blueprint.getPos(22 + this.sourceIndex * 4))) {
+                            this.room.spawn.recycleCreep(this.mySource.transferer);
+                            return this.moveTo(this.room.blueprint.getPos(30 + this.sourceIndex * 2));
+                        }
+                        if (this.pos.isEqualTo(this.room.blueprint.getPos(30 + this.sourceIndex * 2))) {
                             return this.room.spawn.recycleCreep(this);
                         }
-                        return this.moveTo(this.room.blueprint.getPos(31), {reusePath: 7})
+                        if (this.moveByPath(this.mySource.pathToSpawn) == ERR_NOT_FOUND) {
+                            return this.moveTo(this.room.blueprint.getPos(22 + this.sourceIndex * 4));
+                        }
                     }
                     if (this.store.getUsedCapacity() == 0) {
-                        if (this.pickup(this.mySource.sourceEnergyDrop) == ERR_NOT_IN_RANGE) {
+                        if (this.mySource.sourceEnergyDrop && this.pickup(this.mySource.sourceEnergyDrop) == ERR_NOT_IN_RANGE) {
                             if (this.moveByPath(this.mySource.pathToSource) == ERR_NOT_FOUND) {
-                                this.moveTo(this.room.blueprint.getPos(23 + 2 * this.sourceIndex), {reusePath: 7});
+                                this.moveTo(this.room.blueprint.getPos(22 + 4 * this.sourceIndex), {reusePath: 7});
                             }
                             return;
                         }

@@ -75,6 +75,29 @@ module.exports = function() {
         configurable: true
     });
 
+    Object.defineProperty(p, "isFullEnergy", {
+        get: function() {
+            if (this._isFullEnergy == undefined) {
+                let isFull = true;
+                loop1: for (const source of this.sources) {
+                    if (source) {
+                        for (const creep of [source.transferer, source.upgrader]) {
+                            if (creep && !creep.myBuildingsAreFull) {
+                                isFull = false;
+                                break loop1;
+                            }
+                        }
+                    }
+                }
+                this._isFullEnergy = isFull;
+            }
+            return this._isFullEnergy;
+        },
+        configurable: true
+    });
+
+
+
     Object.defineProperty(p, "spawn", {
         get: function() {
             if (!this._spawn) {

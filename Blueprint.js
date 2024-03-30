@@ -94,7 +94,7 @@ for (const ref of [1, 2]) {
                 loop2: for (const dx of AROUND) {
                     for (const dy of AROUND) {
                         const testedPosition = new RoomPosition(harvesterPosition[0] + dx, harvesterPosition[1] + dy, this.room.name);
-                        if (testedPosition.look().length == 1 && !this.room.sources[sourceIndex].pathToSpawn.some(step => testedPosition.x == step.x && testedPosition.y == step.y)) {
+                        if (testedPosition.look().length == 1 && testedPosition.terrain != "wall" && !this.room.sources[sourceIndex].pathToSpawn.some(step => testedPosition.x == step.x && testedPosition.y == step.y)) {
                             this.memory[name] = [testedPosition.x, testedPosition.y];
                             break loop2;
                         }
@@ -212,14 +212,38 @@ Object.defineProperty(Blueprint.prototype, "container0", {
     enumerable: true,
     configurable: true
 });
+Object.defineProperty(Blueprint.prototype, "storage", {
+    get: function() {
+        const tested = Game.getObjectById(this.memory["storage"]);
+        if (!tested) {
+            this.memory["storage"] = undefined;
+        }
+        return tested
+    },
+    set: function(value) {
+        this.memory["storage"] = value.id;
+    },
+    enumerable: true,
+    configurable: true
+});
 Object.defineProperty(Blueprint.prototype, "localBuildingsPerLevel", {
     get: function() {
-        return [
+        return (this.room.sources.length == 2) ?   [
             [],
             [],
             [[this.ext1, this.getPos(8), STRUCTURE_EXTENSION, "ext1"], [this.ext2, this.getPos(12), STRUCTURE_EXTENSION, "ext2"], [this.ext3, this.getPos(36), STRUCTURE_EXTENSION, "ext3"], [this.ext4, this.getPos(40), STRUCTURE_EXTENSION, "ext4"], [this.ext5, this.getPos(9), STRUCTURE_EXTENSION, "ext5"], [this.container0, this.getPos(24), STRUCTURE_CONTAINER, "container0"]],
             [[this.tower, this.getPos(10), STRUCTURE_TOWER, "tower"], [this.ext6, this.getPos(11), STRUCTURE_EXTENSION, "ext6"], [this.ext7, this.getPos(37), STRUCTURE_EXTENSION, "ext7"], [this.ext8, this.getPos(39), STRUCTURE_EXTENSION, "ext8"], [this.ext9, this.getPos(15), STRUCTURE_EXTENSION, "ext9"], [this.ext10, this.getPos(19), STRUCTURE_EXTENSION, "ext10"]],
             [[this.ext11, this.getPos(29), STRUCTURE_EXTENSION, "ext11"], [this.ext12, this.getPos(33), STRUCTURE_EXTENSION, "ext12"], [this.ext13, this.getPos(17), STRUCTURE_EXTENSION, "ext13"]],
+            [],
+            [[this.link0, this.getPos(24), STRUCTURE_LINK, "link0"]],
+            [],
+            []
+        ]
+                                            :   [
+            [],
+            [],
+            [[this.ext1, this.getPos(8), STRUCTURE_EXTENSION, "ext1"], [this.ext3, this.getPos(36), STRUCTURE_EXTENSION, "ext3"], [this.ext5, this.getPos(9), STRUCTURE_EXTENSION, "ext5"], [this.ext7, this.getPos(37), STRUCTURE_EXTENSION, "ext7"], [this.ext9, this.getPos(15), STRUCTURE_EXTENSION, "ext9"], [this.container0, this.getPos(24), STRUCTURE_CONTAINER, "container0"]],
+            [[this.tower, this.getPos(10), STRUCTURE_TOWER, "tower"], [this.ext11, this.getPos(29), STRUCTURE_EXTENSION, "ext11"]],
             [],
             [[this.link0, this.getPos(24), STRUCTURE_LINK, "link0"]],
             [],
@@ -237,7 +261,10 @@ Object.defineProperty(Blueprint.prototype, "remoteBuildingsPerLevel", {
             [],
             [],
             [],
-            [[this.link1, this.link1Pos, STRUCTURE_LINK, "link1"], [this.link2, this.link2Pos, STRUCTURE_LINK, "link2"]],
+            (this.room.sources.length == 2) ?
+                [[this.link1, this.link1Pos, STRUCTURE_LINK, "link1"], [this.link2, this.link2Pos, STRUCTURE_LINK, "link2"]]
+            :
+                [[this.link1, this.link1Pos, STRUCTURE_LINK, "link1"]],
             [],
             [],
             []

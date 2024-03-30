@@ -156,6 +156,27 @@ module.exports = function() {
         configurable: true
     });
 
+    Object.defineProperty(p, 'recycleEnergyDrop', {
+        get: function() {
+            if (!this._recycleEnergyDrop) {
+                if (!Game.getObjectById(this.memory.recycleEnergyDrop)) {
+                    let testedDrops = this.room.blueprint.getPos(30 + this.sourceIndex * 2).lookFor(LOOK_RESOURCES);
+                    if (testedDrops.length) {
+                        this.memory.recycleEnergyDrop = testedDrops[0].id;
+                    }
+                }
+                this._recycleEnergyDrop = Game.getObjectById(this.memory.recycleEnergyDrop);
+            }
+            return this._recycleEnergyDrop;
+        },
+        set: function(value) {
+            this._recycleEnergyDrop = value;
+            this.memory.recycleEnergyDrop = value.id;
+        },
+        enumerable: false,
+        configurable: true
+    });
+
     Object.defineProperty(p, 'sourceEnergyDrop', {
         get: function() {
             if (!this._sourceEnergyDrop) {
@@ -172,27 +193,6 @@ module.exports = function() {
         set: function(value) {
             this._sourceEnergyDrop = value;
             this.memory.sourceEnergyDrop = value.id;
-        },
-        enumerable: false,
-        configurable: true
-    });
-
-    Object.defineProperty(p, 'recycleEnergyDrop', {
-        get: function() {
-            if (!this._recycleEnergyDrop) {
-                if (!Game.getObjectById(this.memory.recycleEnergyDrop)) {
-                    let testedDrops = this.room.blueprint.getPos(31).lookFor(LOOK_RESOURCES);
-                    if (testedDrops.length) {
-                        this.memory.recycleEnergyDrop = testedDrops[0].id;
-                    }
-                }
-                this._recycleEnergyDrop = Game.getObjectById(this.memory.recycleEnergyDrop);
-            }
-            return this._recycleEnergyDrop;
-        },
-        set: function(value) {
-            this._recycleEnergyDrop = value;
-            this.memory.recycleEnergyDrop = value.id;
         },
         enumerable: false,
         configurable: true

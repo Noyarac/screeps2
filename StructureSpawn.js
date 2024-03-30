@@ -26,7 +26,7 @@ module.exports = function() {
                     Memory.creepsNames[creep.id] = creep.name;
                 }
             }
-            if (Game.time > this.ttl || this.room.energyAvailable == this.room.energyCapacityAvailable) {
+            if (Game.time > this.ttl || this.room.isFullEnergy) {
                 loop1: for (const [sourceIndex, source] of this.room.sources.entries()) {
                     for (const [type, condition] of [["harvester", true], ["mover", !this.room.blueprint.link0], ["upgrader", true], ["transferer", (sourceIndex == 0 || this.room.blueprint.ext4 || this.room.blueprint.ext8 || this.room.blueprint.ext12)]]) {
                         if (!source[type] && condition) {
@@ -66,11 +66,11 @@ module.exports = function() {
 
         switch(type) {
             case "upgrader":
-                positionRef = 31;
+                positionRef = 45;
                 spawningPosition = this.getSpawningPosition(positionRef);
                 if (this.isDirectionOccupied(spawningPosition)) return ERR_NO_PATH;
 
-                workPartsQty = Math.min(9, ~~((this.room.energyAvailable - BODYPART_COST[CARRY]) / BODYPART_COST[WORK]));
+                workPartsQty = Math.min(10, ~~((this.room.energyAvailable - BODYPART_COST[CARRY]) / BODYPART_COST[WORK]));
                 if (workPartsQty < 1) return ERR_NOT_ENOUGH_ENERGY;
 
                 carryPartsQty = 1;
