@@ -12,20 +12,20 @@ module.exports = function() {
                         break;
                     }
                     const newStruct = new RoomPosition(event.data.x, event.data.y, this.name).lookFor(LOOK_STRUCTURES)[0];
-                    loop1: for (const location of ["remote", "local"]) {
-                        for (let i = 0; i < Math.min(7, this.controller.level + 1); i++) {
-                            for (let j = 0; j < this.blueprint[location + "BuildingsPerLevel"][i].length; j++) {
-                                // for (let [building, position, structType] of this.blueprint[location + "BuildingsPerLevel"][i]) {
-                                const position = this.blueprint[location + "BuildingsPerLevel"][i][j][1];
-                                const structType = this.blueprint[location + "BuildingsPerLevel"][i][j][2];
-                                const ref = this.blueprint[location + "BuildingsPerLevel"][i][j][3]
-                                if (newStruct.pos.isEqualTo(position) && newStruct.structureType == structType) {
-                                    this.blueprint[ref] = newStruct;
-                                    break loop1;
+                    loop1: for (let i = 0; i <= this.controller.level; i++) {
+                        for (let j = 0; j < this.blueprint["buildingsPerLevel"][i].length; j++) {
+                            const position = this.blueprint["buildingsPerLevel"][i][j][1];
+                            const structType = this.blueprint["buildingsPerLevel"][i][j][2];
+                            const ref = this.blueprint["buildingsPerLevel"][i][j][3]
+                            if (newStruct.pos.isEqualTo(position) && newStruct.structureType == structType) {
+                                this.blueprint[ref] = newStruct;
+                                if (ref == "ext13") {
+                                    this.memory.cell25IsOccupied = (newStruct.pos.isEqualTo(this.blueprint.getPos(25))) ? true : undefined;
                                 }
+                                break loop1;
                             }
                         }
-                    }            
+                    }
                     break;
                 case EVENT_OBJECT_DESTROYED:
                     if (event.data.type == "creep") {
@@ -45,21 +45,27 @@ module.exports = function() {
     }
 
     p.scanExistingBuildings = function() {
-        debugger;
-        for (const location of ["remote", "local"]) {
-            for (let i = 0; i < 7; i++) {
-                for (let j = 0; j < this.blueprint[location + "BuildingsPerLevel"][i].length; j++) {
-                    const position = this.blueprint[location + "BuildingsPerLevel"][i][j][1];
-                    const structType = this.blueprint[location + "BuildingsPerLevel"][i][j][2];
-                    const ref = this.blueprint[location + "BuildingsPerLevel"][i][j][3]
+        for (let i = 0; i < 7; i++) {
+            for (let j = 0; j < this.blueprint["buildingsPerLevel"][i].length; j++) {
+                const position = this.blueprint["buildingsPerLevel"][i][j][1];
+                const structType = this.blueprint["buildingsPerLevel"][i][j][2];
+                const ref = this.blueprint["buildingsPerLevel"][i][j][3]
 
-                    const testedBuildings = position.lookFor(LOOK_STRUCTURES).filter(struct => struct.structureType == structType);
-                    if (testedBuildings.length) {
-                        this.blueprint[ref] = testedBuildings[0];
-                    }
+                const testedBuildings = position.lookFor(LOOK_STRUCTURES).filter(struct => struct.structureType == structType);
+                if (testedBuildings.length) {
+                    this.blueprint[ref] = testedBuildings[0];
                 }
             }
-        }            
+        }
+    }
+
+    p.drainStorage = function() {
+        if (!this.storage || this.storage.store.isEmpty) return;
+        for (const source of this.sources) {
+            if (!source.builder) {
+                this.spawn.smartSpawn("builder", source.sourceIndex, this.name);
+            }
+        }
     }
 
     Object.defineProperty(p, "sources", {

@@ -16,7 +16,7 @@ module.exports = function() {
             if (this.type == "transferer") {
                 return [this.room.blueprint["ext" + (3 + this.sourceIndex).toString()], this.room.blueprint["ext" + (7 + this.sourceIndex).toString()], this.room.blueprint["ext" + (11 + this.sourceIndex).toString()], this.room.spawn]
             } else if (this.type == "upgrader") {
-                return [this.room.blueprint["ext" + (1 + this.sourceIndex).toString()], this.room.blueprint["ext" + (5 + this.sourceIndex).toString()], this.room.blueprint["ext" + (9 + this.sourceIndex).toString()], (this.sourceIndex == 0) ? this.room.blueprint.tower : this.room.blueprint.ext13]
+                return [this.room.blueprint["ext" + (1 + this.sourceIndex).toString()], this.room.blueprint["ext" + (5 + this.sourceIndex).toString()], this.room.blueprint["ext" + (9 + this.sourceIndex).toString()], (this.sourceIndex == 0) ? this.room.blueprint.tower : this.room.blueprint.ext13, (this.sourceIndex == 0) ? this.room.blueprint.spawn2 : undefined]
             }
         },
         enumerable: true,
@@ -65,6 +65,7 @@ module.exports = function() {
     
     p.doAction = function() {
         try{
+            if (this.spawning) return;
             if (this.hits < this.hitsMax && !this.room.find(FIND_HOSTILE_CREEPS).length && this.room.blueprint.tower) {
                 this.room.blueprint.tower.heal(this);
             }
@@ -97,7 +98,7 @@ module.exports = function() {
                     if (this.room.blueprint.storage) {
                         return this.transfer(this.room.blueprint.storage, RESOURCE_ENERGY);
                     }
-                    return;
+                    return OK;
                 }
                 if (this.store.getFreeCapacity(RESOURCE_ENERGY) != 0) {
                     if (this.room.blueprint.storage && this.room.blueprint.storage.store.getUsedCapacity(RESOURCE_ENERGY)) {

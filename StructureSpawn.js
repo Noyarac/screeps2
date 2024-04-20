@@ -55,7 +55,7 @@ module.exports = function() {
         const dir = [this.pos.getDirectionTo(spawningPosition)];
         const status = this.spawnCreep([...new Array(workPartsQty).fill(WORK), ...new Array(movePartsQty).fill(MOVE), ...new Array(claimPartsQty).fill(CLAIM), ...new Array(carryPartsQty).fill(CARRY)], creepName, {directions: dir, memory: {type, sourceIndex, targetRoomName: targetedRoomName}});
         if (status == OK) {
-            this.ttl = Game.time + this.TTL_DELAY;
+            this.room.spawn.ttl = Game.time + this.TTL_DELAY;
         }
         return status;
     };
@@ -66,22 +66,24 @@ module.exports = function() {
 
         switch(type) {
             case "upgrader":
-                positionRef = 45;
+                positionRef = (this.room.blueprint.spawn2) ? 16 + sourceIndex * 2 : 45;
                 spawningPosition = this.getSpawningPosition(positionRef);
                 if (this.isDirectionOccupied(spawningPosition)) return ERR_NO_PATH;
 
-                carryPartsQty = (this.room.controller.level > 7 && sourceIndex == 0) ? 2 : 1;
+                carryPartsQty = (this.room.controller.level >= 7 && this.room.blueprint.spawn2 && sourceIndex == 0) ? 2 : 1;
                 const maxWorkPartsQty = (this.room.controller.level == 8) ?
                                             (sourceIndex) ? 0 : 15
+                                        : (this.room.controller.level == 7 && this.room.blueprint.spawn2) ? 
+                                            (sourceIndex) ? 0 : 18
                                         : 9;
 
                 workPartsQty = Math.min(maxWorkPartsQty, ~~((this.room.energyAvailable - carryPartsQty * BODYPART_COST[CARRY]) / BODYPART_COST[WORK]));
-                if (workPartsQty < 1 && this.room.controller.level < 8) return ERR_NOT_ENOUGH_ENERGY;
+                if (workPartsQty < 1 && !(this.room.controller.level >= 7 && sourceIndex)) return ERR_NOT_ENOUGH_ENERGY;
 
 
-                status = this.doTheSpawn(type, sourceIndex, targetRoomName, spawningPosition, carryPartsQty, workPartsQty, movePartsQty, claimPartsQty);
+                status = (this.room.blueprint.spawn2) ? this.room.blueprint.spawn2.doTheSpawn(type, sourceIndex, targetRoomName, spawningPosition, carryPartsQty, workPartsQty, movePartsQty, claimPartsQty) : this.doTheSpawn(type, sourceIndex, targetRoomName, spawningPosition, carryPartsQty, workPartsQty, movePartsQty, claimPartsQty);
                 if (status == OK) {
-                    this.room.sources[sourceIndex].needsUpgraderMoving = true;
+                    this.room.sources[sourceIndex].needsUpgraderMoving = (this == this.room.blueprint.spawn2) ? undefined : true;
                 }
                 return status;
 
@@ -125,6 +127,7 @@ module.exports = function() {
                 return this.doTheSpawn(type, sourceIndex, targetRoomName, spawningPosition, carryPartsQty, workPartsQty, movePartsQty, claimPartsQty);
 
             case "builder":
+                targetRoomName = targetRoomName || this.room.name;
                 positionRef = 44 + sourceIndex * 2;
                 spawningPosition = this.getSpawningPosition(positionRef);
                 if (this.isDirectionOccupied(spawningPosition)) return ERR_NO_PATH;
@@ -136,6 +139,7 @@ module.exports = function() {
                 return this.doTheSpawn(type, sourceIndex, targetRoomName, spawningPosition, carryPartsQty, workPartsQty, movePartsQty, claimPartsQty);
 
             case "claimer":
+                targetRoomName = targetRoomName || this.room.name;
                 positionRef = 45;
                 spawningPosition = this.getSpawningPosition(positionRef);
                 if (this.isDirectionOccupied(spawningPosition)) return ERR_NO_PATH;
