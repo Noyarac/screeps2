@@ -82,7 +82,7 @@ module.exports = function() {
                 loop1: for (const source of this.sources) {
                     if (source) {
                         for (const creep of [source.transferer, source.upgrader]) {
-                            if (creep && !creep.myBuildingsAreFull) {
+                            if (creep && !creep.spawning && !creep.myBuildingsAreFull) {
                                 isFull = false;
                                 break loop1;
                             }

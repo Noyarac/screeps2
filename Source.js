@@ -84,8 +84,13 @@ module.exports = function() {
                                 for (const step of source0.pathToSpawn) {
                                     costMatrix.set(step.x, step.y, 6);
                                 }
+                                for (const x of [-1, 0, 1]) {
+                                    for (const y of [-1, 0, 1]) {
+                                        costMatrix.set(source0.x + x, source0.y + y, 255);
+                                    }
+                                }
                             }
-                            for (const i of [8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 24, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 45]) {
+                            for (const i of [8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 24, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 44, 45, 46]) {
                                 costMatrix.set(blueprint.getPos(i).x, blueprint.getPos(i).y, 255);
                             }
                         }
@@ -151,6 +156,21 @@ module.exports = function() {
         set: function(value) {
             this._transferer = value;
             this.memory.transferer = value.id;
+        },
+        enumerable: false,
+        configurable: true
+    });
+
+    Object.defineProperty(p, 'builder', {
+        get: function() {
+            if (!this._builder) {
+                this._builder = Game.getObjectById(this.memory.builder);
+            }
+            return this._builder;
+        },
+        set: function(value) {
+            this._builder = value;
+            this.memory.builder = value.id;
         },
         enumerable: false,
         configurable: true

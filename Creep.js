@@ -28,7 +28,7 @@ module.exports = function() {
             if (this._myBuildingsAreFull == undefined) {
                 let isFull = true;
                 for (const building of this.myBuildings) {
-                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY)) {
+                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && building.isActive()) {
                         isFull = false;
                         break;
                     }
@@ -65,7 +65,9 @@ module.exports = function() {
     
     p.doAction = function() {
         try{
-            let CP;
+            if (this.hits < this.hitsMax && !this.room.find(FIND_HOSTILE_CREEPS).length && this.room.blueprint.tower) {
+                this.room.blueprint.tower.heal(this);
+            }
         switch(this.type) {
             case "transferer":
                 if (this.mySource.recycleEnergyDrop && this.store.getFreeCapacity(RESOURCE_ENERGY) != 0) {
@@ -84,7 +86,14 @@ module.exports = function() {
                         return this.withdraw(this.room.blueprint.storage, RESOURCE_ENERGY);
                     }
                 }
-                if (this._myBuildingsAreFull) {
+                if (this.myBuildingsAreFull) {
+                    if (this.room.blueprint.storage && this.room.blueprint.container0 && this.room.blueprint.container0.store.getUsedCapacity(RESOURCE_ENERGY) < 100) {
+                        if (this.store.getUsedCapacity(RESOURCE_ENERGY) == 0) {
+                            return this.withdraw(this.room.blueprint.storage, RESOURCE_ENERGY);
+                        } else {
+                            return this.transfer(this.room.blueprint.container0, RESOURCE_ENERGY);
+                        }
+                    }
                     if (this.room.blueprint.storage) {
                         return this.transfer(this.room.blueprint.storage, RESOURCE_ENERGY);
                     }
@@ -127,7 +136,7 @@ module.exports = function() {
                     }
                 }
                 this.harvest(this.mySource);
-                if (this.mySource.link && this.store.getUsedCapacity(RESOURCE_ENERGY) > 40) {
+                if (this.mySource.link && this.store.getFreeCapacity(RESOURCE_ENERGY) < 10) {
                     return this.transfer(this.mySource.link, RESOURCE_ENERGY);
                 }
                 break;
@@ -144,68 +153,65 @@ module.exports = function() {
                 if (this.mySource.needsUpgraderMoving) {
                     return;
                 }
-                if (this.store.getUsedCapacity() < 20) {
-                    if (this.mySource.spawnEnergyDrop) {
-                        this.pickup(this.mySource.spawnEnergyDrop);
-                    } else 
+                if (this.store.getUsedCapacity(RESOURCE_ENERGY) < (this.getActiveBodyparts(WORK) + 1)) {
                     if (this.room.blueprint.link0) {
                         this.withdraw(this.room.blueprint.link0, RESOURCE_ENERGY);
                     } else
                     if (this.room.blueprint.container0) {
                         this.withdraw(this.room.blueprint.container0, RESOURCE_ENERGY);
-                    }
+                    } else
+                    if (this.mySource.spawnEnergyDrop) {
+                        this.pickup(this.mySource.spawnEnergyDrop);
+                    } 
                 } 
                 for (const building of this.myBuildings) {
-                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+                    if (building && building.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && building.isActive()) {
                         return this.transfer(building, RESOURCE_ENERGY);
                     }
                 }
                 if (this.room.isFullEnergy) {
+                    if (this.room.blueprint.container0 && this.room.blueprint.container0.hits < 20000) {
+                        return this.repair(this.room.blueprint.container0);
+                    }
                     this.build(this.room.blueprint.currentConstructionSite);
                     return this.upgradeController(this.room.controller);
                 }
                 break;
             case "builder":
-                CP = "E48S20";
-                if (this.room.name != CP && !this.memory.wentToCP) {
-                    return this.moveTo(new RoomPosition(3, 44, CP), {reusePath:50});
-                }
-                if (this.room.name == CP && !this.memory.wentToCP) {
-                    this.memory.wentToCP = true;
-                    return
-                }
                 if (this.room.name != this.memory.targetRoomName) {
-                    return this.moveTo(new RoomPosition(25, 25, this.memory.targetRoomName), {reusePath:50});
+                    return this.moveTo(new RoomPosition(9, 27, this.memory.targetRoomName), {reusePath:50});
                 }
                 if (!this.store.getUsedCapacity(RESOURCE_ENERGY)) {
                     this.memory.needsEnergy = true;
                 } else
                 if (!this.store.getFreeCapacity(RESOURCE_ENERGY)) {
-                   this.memory.needsEnergy = undefined;
+                    this.memory.needsEnergy = undefined;
                 }
-                
                 if (this.memory.needsEnergy) {
-                    // if (this.withdraw(Game.getObjectById("65ff6ce6fde9b51d86868f3d"), RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                    //     this.moveTo(Game.getObjectById("65ff6ce6fde9b51d86868f3d"), {reusePath: 7});
-                    // }
-                    if (this.harvest(this.room.sources[this.sourceIndex]) == ERR_NOT_IN_RANGE) {
-                        this.moveTo(this.room.sources[this.sourceIndex], {reusePath: 7});
+                    if (this.room.storage) {
+                        if (this.withdraw(this.room.storage, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                            this.moveTo(this.room.storage, {reusePath: 7});
+                        }
+                    } else {
+                        if (this.harvest(this.mySource) == ERR_NOT_IN_RANGE) {
+                            this.moveTo(this.mySource, {reusePath: 7});
+                        }
                     }
                 } else {
-                    if (this.room.blueprint.currentConstructionSite && this.build(this.room.blueprint.currentConstructionSite) == ERR_NOT_IN_RANGE) {
-                        this.moveTo(this.room.blueprint.currentConstructionSite, {reusePath: 7});
+                    if (this.room.blueprint.currentConstructionSite) {
+                        if (this.build(this.room.blueprint.currentConstructionSite) == ERR_NOT_IN_RANGE) {
+                            this.moveTo(this.room.blueprint.currentConstructionSite, {reusePath: 7});
+                        }
+                    } else {
+                        if (this.upgradeController(this.room.controller) == ERR_NOT_IN_RANGE) {
+                            this.moveTo(this.room.controller, {reusePath: 7});
+                        }
                     }
                 }
                 break;
                 case "claimer":
-                CP = "E48S20";
-                if (this.room.name != CP && !this.memory.wentToCP) {
-                    return this.moveTo(new RoomPosition(3, 44, CP), {reusePath:50});
-                }
-                if (this.room.name == CP && !this.memory.wentToCP) {
-                    this.memory.wentToCP = true;
-                    return
-                }
+                    //if (this.room.name != "W50S0" && !this.memory.wentToCheckPoint) {return this.moveTo(new RoomPosition(25, 25, "W50S0"), {reusePath:100})}
+                    //if (this.room.name == "W50S0" && !this.memory.wentToCheckPoint) {this.memory.wentToCheckPoint = true}
                     if (this.room.name != this.memory.targetRoomName) {
                         return this.moveTo(new RoomPosition(25, 25, this.memory.targetRoomName), {reusePath: 50});
                     }
@@ -214,13 +220,15 @@ module.exports = function() {
                     }
                     if (this.claimController(this.room.controller) == ERR_NOT_IN_RANGE) {
                         this.moveTo(this.room.controller, {reusePath: 7});
+                    } else {
+                        this.signController("Who's been wearing Miranda's clothes?")
                     }
                     break;
                 case "carrier":
                     let myResource;
                     if (this.store.getUsedCapacity()) {
-                        const arrivalTerminal = Game.getObjectById("65fec893f30a2f3c6c76f75c");
-                        for (const resource of ["GO", "ZH", "UH", "KO", "energy"]) {
+                        const arrivalTerminal = Game.getObjectById("66007d5a2e5d6b17cae12cca");
+                        for (const resource of ["energy"]) {
                             if (this.store.getUsedCapacity(resource)) {
                                 myResource = resource;
                                 break;
@@ -230,8 +238,8 @@ module.exports = function() {
                             return this.moveTo(arrivalTerminal, {reusePath: 25});
                         }
                     } else {
-                        const departureStorage = Game.getObjectById("65c863a0a89443defc43e79a");
-                        for (const resource of ["GO", "ZH", "UH", "KO", "energy"]) {
+                        const departureStorage = Game.getObjectById("65c46ae9b9ef42aaff711d30");
+                        for (const resource of ["energy"]) {
                             if (departureStorage.store.getUsedCapacity(resource)) {
                                 myResource = resource;
                                 break;

@@ -4,7 +4,7 @@ module.exports = function() {
     p.reactToTick = function() {
         const targets = this.room.find(FIND_HOSTILE_CREEPS);
         if (targets.length) {
-            this.attack(targets[0]);
+            return this.attack(targets[0]);
         }
     }
 }
